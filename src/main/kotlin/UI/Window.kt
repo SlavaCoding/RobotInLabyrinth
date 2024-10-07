@@ -14,8 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import searchInDepth
-import searchInWidth
 
 @Composable
 fun Window() {
@@ -76,6 +74,7 @@ fun Window() {
                     vm.coroutineScope.launch {
                         vm.field = vm.createField()
                         vm.visited = vm.createVisited()
+                        vm.path = listOf()
                     }
                 }
             ){
@@ -97,12 +96,15 @@ fun Window() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Button({vm.findPath(::searchInDepth)}){
+                Button({vm.findPath(AlgorithmEnum.SearchInDepth)}){
                     Text("Поиск в глубину")
                 }
-                Button({vm.findPath(::searchInWidth)}){
+                Button({vm.findPath(AlgorithmEnum.SearchInWidth)}){
                     Text("Поиск в ширину")
                 }
+            }
+            Button({vm.findPath(AlgorithmEnum.BranchBoundaryMethod)}, Modifier.fillMaxWidth()){
+                Text("Поиск в методом ветвей и границ")
             }
 
             Box(Modifier.verticalScroll(ScrollState(0))) {

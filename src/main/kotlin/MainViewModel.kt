@@ -2,7 +2,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -42,21 +41,10 @@ class MainViewModel {
         return matrix
     }
 
-    fun createVisited(): MutableList<MutableList<Boolean>> {
-        val matrix = mutableStateListOf<MutableList<Boolean>>()
-        repeat(field.size) { row ->
-            matrix.add(mutableStateListOf())
-            repeat(field[0].size){
-                matrix[row].add(false)
-            }
-        }
-        return matrix
-    }
+    fun createVisited(): MutableList<MutableList<Boolean>> = MutableList(field.size){MutableList(field[0].size){false} }
 
-    fun findPath(method: ((Pair<Int, Int>) -> List<Pair<Int, Int>>,
-                          (Pair<Int, Int>) -> Boolean,
-                          (Pair<Int, Int>) -> Boolean,
-                          Pair<Int, Int>) -> List<Pair<Int, Int>>?) {
+    fun findPath(method: AlgorithmEnum) {
+        // Подготовка к решению задачи
         if (robot.first > field.size || robot.second > field[0].size || robot.first < 0 || robot.second < 0){
             status = "Робот находится за пределом поля"
             return
@@ -67,24 +55,35 @@ class MainViewModel {
             return
         }
         field[target.first][target.second] = true
+
+        //Выполняем поиск
         coroutineScope.launch {
-            val generator = { state: Pair<Int, Int> ->
-                stateGenerator(field, state, target, dynamicPriority)
-            }
-            val targetCheck = { state: Pair<Int, Int> ->
-                isTarget(state, target)
-            }
+            val generator = { state: Pair<Int, Int> -> stateGenerator(field, state, target, dynamicPriority) }
+            val targetCheck = { state: Pair<Int, Int> -> isTarget(state, target) }
             visited = createVisited()
-            visited[robot.first][robot.second] = true
-            val visit =  { state: Pair<Int, Int> ->
+            visited[robot.first][robot.second] = true   // Клетка, в которой стоит робот уже посещена
+            val visitCheck =  { state: Pair<Int, Int> ->
                 val result = visited[state.first][state.second]
                 visited[state.first][state.second] = true
                 result
             }
-            path = method(generator, targetCheck, visit, robot) ?: listOf()
-            status = "Длина пути: ${path.size-1} \n" + path.toString()
+            path = when (method){
+                AlgorithmEnum.SearchInDepth -> searchInDepth(generator, targetCheck, visitCheck, robot) ?: listOf()
+                AlgorithmEnum.SearchInWidth -> searchInWidth(generator, targetCheck, visitCheck, robot) ?: listOf()
+                AlgorithmEnum.BranchBoundaryMethod -> {
+                    val getEval = { state: Pair<Int, Int> -> evaluationFunction(state, target)}
+                    branchBoundaryMethod(generator, getEval, visitCheck, robot) ?: listOf()
+                }
+            }
+            status = "Длина пути: ${path.size-1} \n" +
+                    "Число помеченных клеток: " + visited.flatten().count { it } + "\n" +
+                    path.toString()
         }
     }
+}
+
+enum class AlgorithmEnum {
+    SearchInDepth, SearchInWidth, BranchBoundaryMethod
 }
 
 enum class FieldMode {
